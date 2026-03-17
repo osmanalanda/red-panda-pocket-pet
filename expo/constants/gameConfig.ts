@@ -1,4 +1,4 @@
-import { Achievement, ShopItem } from "@/types/pet";
+import { Achievement, ShopItem, DailyQuest } from "@/types/pet";
 
 export const DECAY_RATE_PER_MINUTE = 0.15;
 export const MAX_STAT = 100;
@@ -15,8 +15,19 @@ export const PLAY_XP = 15;
 export const PLAY_COINS = 8;
 export const PLAY_HAPPINESS_RESTORE = 25;
 
+export const MINI_GAME_DURATION = 15000;
+export const MINI_GAME_SPAWN_INTERVAL = 900;
+export const MINI_GAME_COIN_PER_SCORE = 2;
+export const MINI_GAME_XP_PER_SCORE = 3;
+
 export function xpForLevel(level: number): number {
   return Math.floor(BASE_XP_PER_LEVEL * Math.pow(XP_GROWTH_FACTOR, level - 1));
+}
+
+export function getEvolutionStage(level: number): "baby" | "teen" | "adult" {
+  if (level >= 10) return "adult";
+  if (level >= 5) return "teen";
+  return "baby";
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -119,7 +130,134 @@ export const SHOP_ITEMS: ShopItem[] = [
     xpBonus: 15,
     category: "toy",
   },
+  {
+    id: "bow_tie",
+    name: "Bow Tie",
+    emoji: "🎀",
+    description: "A dapper red bow tie",
+    price: 80,
+    hungerRestore: 0,
+    happinessRestore: 15,
+    xpBonus: 20,
+    category: "accessory",
+  },
+  {
+    id: "crown",
+    name: "Golden Crown",
+    emoji: "👑",
+    description: "Fit for royalty",
+    price: 150,
+    hungerRestore: 0,
+    happinessRestore: 30,
+    xpBonus: 50,
+    category: "accessory",
+  },
+  {
+    id: "scarf",
+    name: "Cozy Scarf",
+    emoji: "🧣",
+    description: "Keeps Kiki warm and stylish",
+    price: 60,
+    hungerRestore: 0,
+    happinessRestore: 20,
+    xpBonus: 15,
+    category: "accessory",
+  },
 ];
+
+export const DAILY_QUESTS: DailyQuest[] = [
+  {
+    id: "feed_3",
+    title: "Hungry Helper",
+    description: "Feed Kiki 3 times",
+    emoji: "🍎",
+    target: 3,
+    rewardCoins: 20,
+    rewardXp: 25,
+    type: "feed",
+  },
+  {
+    id: "play_3",
+    title: "Playful Pal",
+    description: "Play with Kiki 3 times",
+    emoji: "🎾",
+    target: 3,
+    rewardCoins: 20,
+    rewardXp: 25,
+    type: "play",
+  },
+  {
+    id: "mini_game_1",
+    title: "Game Time!",
+    description: "Complete a mini-game",
+    emoji: "🎯",
+    target: 1,
+    rewardCoins: 30,
+    rewardXp: 35,
+    type: "mini_game",
+  },
+  {
+    id: "feed_5",
+    title: "Chef's Kiss",
+    description: "Feed Kiki 5 times",
+    emoji: "👨‍🍳",
+    target: 5,
+    rewardCoins: 35,
+    rewardXp: 40,
+    type: "feed",
+  },
+  {
+    id: "play_5",
+    title: "Best Friend",
+    description: "Play with Kiki 5 times",
+    emoji: "💕",
+    target: 5,
+    rewardCoins: 35,
+    rewardXp: 40,
+    type: "play",
+  },
+  {
+    id: "buy_1",
+    title: "Shopaholic",
+    description: "Buy an item from the shop",
+    emoji: "🛒",
+    target: 1,
+    rewardCoins: 15,
+    rewardXp: 20,
+    type: "buy_item",
+  },
+  {
+    id: "use_2",
+    title: "Item Master",
+    description: "Use 2 items from inventory",
+    emoji: "✨",
+    target: 2,
+    rewardCoins: 25,
+    rewardXp: 30,
+    type: "use_item",
+  },
+  {
+    id: "mini_game_2",
+    title: "Gaming Pro",
+    description: "Complete 2 mini-games",
+    emoji: "🏆",
+    target: 2,
+    rewardCoins: 45,
+    rewardXp: 50,
+    type: "mini_game",
+  },
+];
+
+export function getTodaysDailyQuests(): DailyQuest[] {
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const shuffled = [...DAILY_QUESTS].sort((a, b) => {
+    const hashA = (seed * 31 + a.id.charCodeAt(0)) % 1000;
+    const hashB = (seed * 31 + b.id.charCodeAt(0)) % 1000;
+    return hashA - hashB;
+  });
+  return shuffled.slice(0, 3);
+}
 
 export const ACHIEVEMENTS: Achievement[] = [
   {
@@ -219,5 +357,19 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Keep your pet for 7 days",
     emoji: "📅",
     condition: (s) => Date.now() - s.createdAt >= 7 * 24 * 60 * 60 * 1000,
+  },
+  {
+    id: "mini_game_5",
+    name: "Gamer Panda",
+    description: "Play 5 mini-games",
+    emoji: "🎯",
+    condition: (s) => s.totalMiniGamesPlayed >= 5,
+  },
+  {
+    id: "mini_game_20",
+    name: "Arcade Master",
+    description: "Play 20 mini-games",
+    emoji: "🕹️",
+    condition: (s) => s.totalMiniGamesPlayed >= 20,
   },
 ];

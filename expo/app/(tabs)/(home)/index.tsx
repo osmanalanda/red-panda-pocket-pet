@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePet } from "@/providers/PetProvider";
@@ -19,6 +20,7 @@ import CoinDisplay from "@/components/CoinDisplay";
 import ActionButton from "@/components/ActionButton";
 import ConfettiEffect from "@/components/ConfettiEffect";
 import Toast from "@/components/Toast";
+import DailyQuests from "@/components/DailyQuests";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -60,6 +62,13 @@ export default function HomeScreen() {
     ]).start();
     play();
   }, [play, playBounce]);
+
+  const handleMiniGame = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push("/mini-game");
+  }, []);
 
   if (!isReady) {
     return (
@@ -172,6 +181,21 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
 
+        <View style={styles.miniGameRow}>
+          <ActionButton
+            label="Mini Game"
+            emoji="🎯"
+            onPress={handleMiniGame}
+            color="#5C6BC0"
+            size="large"
+            testID="mini-game-button"
+          />
+        </View>
+
+        <DailyQuests />
+
+        <View style={styles.statsGridSpacing} />
+
         <View style={styles.statsGrid}>
           <View style={styles.statTile}>
             <Text style={styles.statTileValue}>{petState.totalFeeds}</Text>
@@ -180,6 +204,10 @@ export default function HomeScreen() {
           <View style={styles.statTile}>
             <Text style={styles.statTileValue}>{petState.totalPlays}</Text>
             <Text style={styles.statTileLabel}>Plays</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statTileValue}>{petState.totalMiniGamesPlayed}</Text>
+            <Text style={styles.statTileLabel}>Games</Text>
           </View>
           <View style={styles.statTile}>
             <Text style={styles.statTileValue}>{petState.achievements.length}</Text>
@@ -287,10 +315,16 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     gap: 14,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   actionWrapper: {
     flex: 1,
+  },
+  miniGameRow: {
+    marginBottom: 14,
+  },
+  statsGridSpacing: {
+    height: 14,
   },
   statsGrid: {
     flexDirection: "row",

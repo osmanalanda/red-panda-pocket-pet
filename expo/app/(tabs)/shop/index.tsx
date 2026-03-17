@@ -17,17 +17,28 @@ import { ShopItem } from "@/types/pet";
 import CoinDisplay from "@/components/CoinDisplay";
 import Toast from "@/components/Toast";
 
-type Category = "all" | "food" | "toy";
+type Tab = "shop" | "inventory";
+type Category = "all" | "food" | "toy" | "accessory";
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const { petState, buyItem, useItem, toastMessage, dismissToast } = usePet();
+  const [activeTab, setActiveTab] = useState<Tab>("shop");
   const [category, setCategory] = useState<Category>("all");
 
   const filteredItems = useMemo(() => {
     if (category === "all") return SHOP_ITEMS;
     return SHOP_ITEMS.filter((item) => item.category === category);
   }, [category]);
+
+  const inventoryItems = useMemo(() => {
+    return petState.inventory
+      .map((inv) => {
+        const item = SHOP_ITEMS.find((s) => s.id === inv.id);
+        return item ? { ...item, owned: inv.quantity } : null;
+      })
+      .filter((item): item is ShopItem & { owned: number } => item !== null);
+  }, [petState.inventory]);
 
   const handleBuy = useCallback(
     (item: ShopItem) => {
@@ -61,6 +72,7 @@ export default function ShopScreen() {
     { key: "all", label: "All", emoji: "🏪" },
     { key: "food", label: "Food", emoji: "🍽️" },
     { key: "toy", label: "Toys", emoji: "🎮" },
+    { key: "accessory", label: "Style", emoji: "🎀" },
   ];
 
   return (
@@ -80,28 +92,49 @@ export default function ShopScreen() {
         <CoinDisplay coins={petState.coins} />
       </View>
 
-      <View style={styles.categoryRow}>
-        {categories.map((cat) => (
-          <TouchableOpacity
-            key={cat.key}
-            style={[
-              styles.categoryChip,
-              category === cat.key && styles.categoryChipActive,
-            ]}
-            onPress={() => setCategory(cat.key)}
-          >
-            <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-            <Text
-              style={[
-                styles.categoryLabel,
-                category === cat.key && styles.categoryLabelActive,
-              ]}
-            >
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "shop" && styles.tabActive]}
+          onPress={() => setActiveTab("shop")}
+        >
+          <Text style={[styles.tabText, activeTab === "shop" && styles.tabTextActive]}>
+            🛍️ Shop
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "inventory" && styles.tabActive]}
+          onPress={() => setActiveTab("inventory")}
+        >
+          <Text style={[styles.tabText, activeTab === "inventory" && styles.tabTextActive]}>
+            🎒 Inventory ({petState.inventory.reduce((sum, i) => sum + i.quantity, 0)})
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {activeTab === "shop" && (
+        <View style={styles.categoryRow}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat.key}
+              style={[
+                styles.categoryChip,
+                category === cat.key && styles.categoryChipActive,
+              ]}
+              onPress={() => setCategory(cat.key)}
+            >
+              <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+              <Text
+                style={[
+                  styles.categoryLabel,
+                  category === cat.key && styles.categoryLabelActive,
+                ]}
+              >
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -111,11 +144,89 @@ export default function ShopScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {filteredItems.map((item) => {
-          const owned = getInventoryCount(item.id);
-          const canAfford = petState.coins >= item.price;
+        {activeTab === "shop" ? (
+          filteredItems.map((item) => {
+            const owned = getInventoryCount(item.id);
+            const canAfford = petState.coins >= item.price;
 
-          return (
+            return (
+              <View key={item.id} style={styles.itemCard}>
+                <View style={styles.itemHeader}>
+                  <Text style={styles.itemEmoji}>{item.emoji}</Text>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemDesc}>{item.description}</Text>
+                  </View>
+                  {owned > 0 && (
+                    <View style={styles.ownedBadge}>
+                      <Text style={styles.ownedText}>x{owned}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.itemStats}>
+                  {item.hungerRestore > 0 && (
+                    <View style={styles.itemStat}>
+                      <Text style={styles.itemStatEmoji}>🍖</Text>
+                      <Text style={styles.itemStatValue}>+{item.hungerRestore}</Text>
+                    </View>
+                  )}
+                  {item.happinessRestore > 0 && (
+                    <View style={styles.itemStat}>
+                      <Text style={styles.itemStatEmoji}>💕</Text>
+                      <Text style={styles.itemStatValue}>+{item.happinessRestore}</Text>
+                    </View>
+                  )}
+                  {item.xpBonus > 0 && (
+                    <View style={styles.itemStat}>
+                      <Text style={styles.itemStatEmoji}>⚡</Text>
+                      <Text style={styles.itemStatValue}>+{item.xpBonus} XP</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.itemActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.buyButton,
+                      !canAfford && styles.buyButtonDisabled,
+                    ]}
+                    onPress={() => handleBuy(item)}
+                    disabled={!canAfford}
+                  >
+                    <Text style={styles.buyButtonEmoji}>🪙</Text>
+                    <Text
+                      style={[
+                        styles.buyButtonText,
+                        !canAfford && styles.buyButtonTextDisabled,
+                      ]}
+                    >
+                      {item.price}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {owned > 0 && (
+                    <TouchableOpacity
+                      style={styles.useButton}
+                      onPress={() => handleUse(item)}
+                    >
+                      <Text style={styles.useButtonText}>Use</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })
+        ) : inventoryItems.length === 0 ? (
+          <View style={styles.emptyInventory}>
+            <Text style={styles.emptyEmoji}>🎒</Text>
+            <Text style={styles.emptyTitle}>Inventory Empty</Text>
+            <Text style={styles.emptyDesc}>
+              Buy items from the shop to fill your inventory!
+            </Text>
+          </View>
+        ) : (
+          inventoryItems.map((item) => (
             <View key={item.id} style={styles.itemCard}>
               <View style={styles.itemHeader}>
                 <Text style={styles.itemEmoji}>{item.emoji}</Text>
@@ -123,11 +234,9 @@ export default function ShopScreen() {
                   <Text style={styles.itemName}>{item.name}</Text>
                   <Text style={styles.itemDesc}>{item.description}</Text>
                 </View>
-                {owned > 0 && (
-                  <View style={styles.ownedBadge}>
-                    <Text style={styles.ownedText}>x{owned}</Text>
-                  </View>
-                )}
+                <View style={styles.ownedBadge}>
+                  <Text style={styles.ownedText}>x{item.owned}</Text>
+                </View>
               </View>
 
               <View style={styles.itemStats}>
@@ -151,38 +260,15 @@ export default function ShopScreen() {
                 )}
               </View>
 
-              <View style={styles.itemActions}>
-                <TouchableOpacity
-                  style={[
-                    styles.buyButton,
-                    !canAfford && styles.buyButtonDisabled,
-                  ]}
-                  onPress={() => handleBuy(item)}
-                  disabled={!canAfford}
-                >
-                  <Text style={styles.buyButtonEmoji}>🪙</Text>
-                  <Text
-                    style={[
-                      styles.buyButtonText,
-                      !canAfford && styles.buyButtonTextDisabled,
-                    ]}
-                  >
-                    {item.price}
-                  </Text>
-                </TouchableOpacity>
-
-                {owned > 0 && (
-                  <TouchableOpacity
-                    style={styles.useButton}
-                    onPress={() => handleUse(item)}
-                  >
-                    <Text style={styles.useButtonText}>Use</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <TouchableOpacity
+                style={styles.useButtonFull}
+                onPress={() => handleUse(item)}
+              >
+                <Text style={styles.useButtonText}>Use Item</Text>
+              </TouchableOpacity>
             </View>
-          );
-        })}
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -210,20 +296,49 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: "500" as const,
   },
+  tabRow: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    gap: 8,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  tabActive: {
+    backgroundColor: Colors.text,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.textSecondary,
+  },
+  tabTextActive: {
+    color: "#FFF",
+  },
   categoryRow: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 8,
     marginBottom: 14,
   },
   categoryChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: Colors.surfaceElevated,
-    gap: 6,
+    gap: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -234,10 +349,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   categoryEmoji: {
-    fontSize: 14,
+    fontSize: 13,
   },
   categoryLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600" as const,
     color: Colors.text,
   },
@@ -363,9 +478,41 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  useButtonFull: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.secondary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   useButtonText: {
     color: "#FFF",
     fontSize: 16,
     fontWeight: "700" as const,
+  },
+  emptyInventory: {
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyEmoji: {
+    fontSize: 56,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  emptyDesc: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 40,
   },
 });

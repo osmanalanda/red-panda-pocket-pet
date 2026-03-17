@@ -17,6 +17,13 @@ A beautiful, gamified digital pet app featuring an adorable Red Panda. You'll ca
 - **Persistent progress** — Your pet's stats, level, and coins are saved even when the app is closed
 - **Pet mood system** — Your Red Panda's expression changes based on its hunger and happiness
 - **Smart notifications** — Gentle toast alerts when food runs out or your pet needs attention
+- **Mini-game** — Reaction-based tap game with countdown, score tracking, and animated rewards modal
+- **Daily Quests** — 3 rotating daily quests with progress tracking and claimable rewards
+- **Inventory system** — Buy items from shop, store in inventory, use them on your pet
+- **Evolution stages** — Kiki evolves visually: Baby (Lv1-4), Teen (Lv5-9), Adult (Lv10+)
+- **Sadness filter** — Visual overlay and tear indicator when stats drop critically low
+- **Accessories** — Bow Tie, Crown, Scarf available in the shop's new accessory category
+- **Shop inventory tab** — Toggle between shop and inventory views
 
 ---
 
@@ -36,9 +43,10 @@ A beautiful, gamified digital pet app featuring an adorable Red Panda. You'll ca
 
 ### **Screens**
 
-1. **Home Screen** — The main playground showing your Red Panda with animated expressions, stat bars (Hunger & Happiness), XP progress bar, current level, coin balance, and action buttons (Feed, Play, Shop)
-2. **Shop Screen** — Browse and buy food items and toys using earned coins, with item cards showing prices and effects
+1. **Home Screen** — The main playground showing your Red Panda with animated expressions, stat bars (Hunger & Happiness), XP progress bar, current level, coin balance, action buttons (Feed, Play), Mini Game button, and Daily Quests section
+2. **Shop Screen** — Browse and buy food items, toys, and accessories using earned coins; toggle to Inventory tab to view and use owned items
 3. **Achievements Screen** — View unlocked badges and milestones with a visual grid layout
+4. **Mini Game Screen** — Full-screen reaction tap game with countdown, timer, animated targets, score tracking, and rewards modal
 
 ---
 
