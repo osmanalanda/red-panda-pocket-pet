@@ -70,6 +70,13 @@ export default function HomeScreen() {
     router.push("/mini-game");
   }, []);
 
+  const handleRoom = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push("/kikis-room");
+  }, []);
+
   if (!isReady) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
@@ -82,6 +89,7 @@ export default function HomeScreen() {
     mood === "happy" ? "Happy 😊" :
     mood === "neutral" ? "Okay 😐" :
     mood === "hungry" ? "Hungry! 😣" :
+    mood === "laughing" ? "Haha! 😂" :
     mood === "sad" ? "Sad 😢" : "Miserable 😭";
 
   return (
@@ -118,7 +126,12 @@ export default function HomeScreen() {
           <View style={styles.moodBubble}>
             <Text style={styles.moodText}>{moodLabel}</Text>
           </View>
-          <PetSprite mood={mood} level={petState.level} testID="pet-sprite" />
+          <PetSprite
+            mood={mood}
+            level={petState.level}
+            activeAccessories={petState.activeAccessories}
+            testID="pet-sprite"
+          />
           {showLevelUp && (
             <Animated.View style={styles.levelUpBanner}>
               <Text style={styles.levelUpText}>🎉 Level Up! 🎉</Text>
@@ -156,6 +169,15 @@ export default function HomeScreen() {
             emoji="💕"
             testID="happiness-bar"
           />
+          <StatBar
+            label="Cleanliness"
+            value={petState.cleanliness}
+            maxValue={100}
+            color={Colors.cleanliness}
+            _colorDark={Colors.cleanlinessDark}
+            emoji="🛁"
+            testID="cleanliness-bar"
+          />
         </View>
 
         <View style={styles.actionsRow}>
@@ -181,15 +203,27 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
 
-        <View style={styles.miniGameRow}>
-          <ActionButton
-            label="Mini Game"
-            emoji="🎯"
-            onPress={handleMiniGame}
-            color="#5C6BC0"
-            size="large"
-            testID="mini-game-button"
-          />
+        <View style={styles.secondaryActions}>
+          <View style={styles.actionWrapper}>
+            <ActionButton
+              label="Room"
+              emoji="🏠"
+              onPress={handleRoom}
+              color="#8D6E63"
+              size="large"
+              testID="room-button"
+            />
+          </View>
+          <View style={styles.actionWrapper}>
+            <ActionButton
+              label="Games"
+              emoji="🎯"
+              onPress={handleMiniGame}
+              color="#5C6BC0"
+              size="large"
+              testID="mini-game-button"
+            />
+          </View>
         </View>
 
         <DailyQuests />
@@ -317,11 +351,13 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 10,
   },
+  secondaryActions: {
+    flexDirection: "row",
+    gap: 14,
+    marginBottom: 14,
+  },
   actionWrapper: {
     flex: 1,
-  },
-  miniGameRow: {
-    marginBottom: 14,
   },
   statsGridSpacing: {
     height: 14,

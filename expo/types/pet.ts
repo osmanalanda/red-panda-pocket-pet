@@ -2,15 +2,20 @@ export interface PetState {
   name: string;
   hunger: number;
   happiness: number;
+  cleanliness: number;
   xp: number;
   level: number;
   coins: number;
   totalFeeds: number;
   totalPlays: number;
+  totalWashes: number;
+  totalPets: number;
   totalCoinsEarned: number;
   totalMiniGamesPlayed: number;
+  memoryGameHighScore: number;
   lastUpdateTime: number;
   inventory: InventoryItem[];
+  activeAccessories: string[];
   achievements: string[];
   dailyQuests: DailyQuestProgress[];
   dailyQuestsLastReset: number;
@@ -65,6 +70,13 @@ export interface MiniGameResult {
   xpEarned: number;
 }
 
-export type PetMood = "ecstatic" | "happy" | "neutral" | "sad" | "hungry" | "miserable";
+export type PetMood = "ecstatic" | "happy" | "neutral" | "sad" | "hungry" | "miserable" | "laughing";
 
 export type EvolutionStage = "baby" | "teen" | "adult";
+
+export interface MemoryCard {
+  id: number;
+  emoji: string;
+  isFlipped: boolean;
+  isMatched: boolean;
+}

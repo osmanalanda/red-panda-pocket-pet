@@ -2,10 +2,13 @@ import React, { useEffect, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { PetMood, EvolutionStage } from "@/types/pet";
 import { getEvolutionStage } from "@/constants/gameConfig";
+import AccessoryOverlay from "@/components/AccessoryOverlay";
 
 interface PetSpriteProps {
   mood: PetMood;
   level: number;
+  activeAccessories?: string[];
+  showHearts?: boolean;
   testID?: string;
 }
 
@@ -16,31 +19,90 @@ const MOOD_FACES: Record<PetMood, { eyes: string; mouth: string; cheeks: boolean
   sad: { eyes: "◔", mouth: "╥", cheeks: false },
   hungry: { eyes: "◕", mouth: "○", cheeks: false },
   miserable: { eyes: "x", mouth: "﹏", cheeks: false },
+  laughing: { eyes: "≧", mouth: "▽", cheeks: true },
 };
 
-const STAGE_SIZES: Record<EvolutionStage, { body: number; face: number; ear: number; container: number }> = {
-  baby: { body: 110, face: 78, ear: 28, container: 180 },
-  teen: { body: 140, face: 100, ear: 36, container: 220 },
-  adult: { body: 165, face: 118, ear: 42, container: 260 },
+const STAGE_SIZES: Record<EvolutionStage, {
+  body: number; face: number; ear: number; container: number;
+  eyePatchW: number; eyePatchH: number; snout: number;
+}> = {
+  baby: { body: 120, face: 82, ear: 30, container: 200, eyePatchW: 26, eyePatchH: 22, snout: 28 },
+  teen: { body: 150, face: 106, ear: 38, container: 240, eyePatchW: 32, eyePatchH: 28, snout: 34 },
+  adult: { body: 175, face: 124, ear: 44, container: 280, eyePatchW: 38, eyePatchH: 32, snout: 40 },
 };
 
-const STAGE_COLORS: Record<EvolutionStage, { body: string; dark: string; inner: string; badge: string }> = {
-  baby: { body: "#E57373", dark: "#C62828", inner: "#FFAB91", badge: "#AB47BC" },
-  teen: { body: "#D84315", dark: "#BF360C", inner: "#FF8A65", badge: "#7E57C2" },
-  adult: { body: "#BF360C", dark: "#8E2400", inner: "#FF7043", badge: "#5E35B1" },
+const STAGE_COLORS: Record<EvolutionStage, {
+  body: string; dark: string; inner: string; badge: string;
+  belly: string; patch: string; nose: string;
+}> = {
+  baby: {
+    body: "#D4623A", dark: "#8B3A1F", inner: "#FFB89A", badge: "#AB47BC",
+    belly: "#F5DCC8", patch: "#2D1B11", nose: "#1A1A1A",
+  },
+  teen: {
+    body: "#C0502A", dark: "#7A2E15", inner: "#FFA07A", badge: "#7E57C2",
+    belly: "#F0D0B0", patch: "#231510", nose: "#1A1A1A",
+  },
+  adult: {
+    body: "#A84420", dark: "#6B2812", inner: "#FF8C60", badge: "#5E35B1",
+    belly: "#ECC8A8", patch: "#1A0E08", nose: "#0D0D0D",
+  },
 };
 
-export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteProps) {
+export default React.memo(function PetSprite({
+  mood,
+  level,
+  activeAccessories = [],
+  showHearts = false,
+  testID,
+}: PetSpriteProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const earWiggle = useRef(new Animated.Value(0)).current;
   const sadnessOverlay = useRef(new Animated.Value(0)).current;
+  const laughShake = useRef(new Animated.Value(0)).current;
+  const heartAnims = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
 
   const face = useMemo(() => MOOD_FACES[mood], [mood]);
   const stage = useMemo(() => getEvolutionStage(level), [level]);
   const sizes = useMemo(() => STAGE_SIZES[stage], [stage]);
   const colors = useMemo(() => STAGE_COLORS[stage], [stage]);
   const isSad = mood === "sad" || mood === "miserable" || mood === "hungry";
+  const isLaughing = mood === "laughing";
+
+  useEffect(() => {
+    if (showHearts) {
+      heartAnims.forEach((anim, i) => {
+        anim.setValue(0);
+        Animated.sequence([
+          Animated.delay(i * 300),
+          Animated.timing(anim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        ]).start();
+      });
+    }
+  }, [showHearts, heartAnims]);
+
+  useEffect(() => {
+    if (isLaughing) {
+      const shake = Animated.loop(
+        Animated.sequence([
+          Animated.timing(laughShake, { toValue: 4, duration: 80, useNativeDriver: true }),
+          Animated.timing(laughShake, { toValue: -4, duration: 80, useNativeDriver: true }),
+          Animated.timing(laughShake, { toValue: 3, duration: 60, useNativeDriver: true }),
+          Animated.timing(laughShake, { toValue: -3, duration: 60, useNativeDriver: true }),
+          Animated.timing(laughShake, { toValue: 0, duration: 40, useNativeDriver: true }),
+          Animated.delay(200),
+        ])
+      );
+      shake.start();
+      return () => shake.stop();
+    }
+    laughShake.setValue(0);
+  }, [isLaughing, laughShake]);
 
   useEffect(() => {
     Animated.timing(sadnessOverlay, {
@@ -51,10 +113,10 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
   }, [isSad, sadnessOverlay]);
 
   useEffect(() => {
-    if (mood === "ecstatic" || mood === "happy") {
+    if (mood === "ecstatic" || mood === "happy" || mood === "laughing") {
       const pulse = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.04, duration: 1200, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
         ])
       );
@@ -95,7 +157,7 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
 
   const earRotate = earWiggle.interpolate({
     inputRange: [-1, 0, 1],
-    outputRange: ["-5deg", "0deg", "5deg"],
+    outputRange: ["-8deg", "0deg", "8deg"],
   });
 
   const stageLabel = stage === "baby" ? "Baby" : stage === "teen" ? "Teen" : "Adult";
@@ -107,8 +169,12 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
         styles.container,
         {
           width: sizes.container,
-          height: sizes.container,
-          transform: [{ scale: pulseAnim }, { translateY: bounceAnim }],
+          height: sizes.container + 20,
+          transform: [
+            { scale: pulseAnim },
+            { translateY: bounceAnim },
+            { translateX: laughShake },
+          ],
         },
       ]}
     >
@@ -117,32 +183,42 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
           styles.petBody,
           {
             width: sizes.body,
-            height: sizes.body,
+            height: sizes.body * 1.05,
             borderRadius: sizes.body / 2,
             backgroundColor: colors.body,
             shadowColor: colors.dark,
           },
         ]}
       >
+        <View style={[styles.furTexture1, { backgroundColor: colors.dark, opacity: 0.15 }]} />
+        <View style={[styles.furTexture2, { backgroundColor: colors.dark, opacity: 0.1 }]} />
+        <View style={[styles.furTexture3, { backgroundColor: colors.inner, opacity: 0.12 }]} />
+
         <Animated.View
           style={[
             styles.earLeft,
             {
               width: sizes.ear,
-              height: sizes.ear,
-              borderRadius: sizes.ear / 2,
-              backgroundColor: colors.body,
-              transform: [{ rotate: earRotate }],
+              height: sizes.ear * 1.2,
+              borderTopLeftRadius: sizes.ear / 2,
+              borderTopRightRadius: sizes.ear / 2,
+              borderBottomLeftRadius: sizes.ear / 3,
+              borderBottomRightRadius: sizes.ear / 3,
+              backgroundColor: colors.dark,
+              transform: [{ rotate: earRotate }, { rotate: "-15deg" }],
             },
           ]}
         >
           <View
             style={[
-              styles.earInner,
+              styles.earInnerRealistic,
               {
-                width: sizes.ear - 12,
-                height: sizes.ear - 12,
-                borderRadius: (sizes.ear - 12) / 2,
+                width: sizes.ear - 14,
+                height: (sizes.ear - 14) * 1.1,
+                borderTopLeftRadius: (sizes.ear - 14) / 2,
+                borderTopRightRadius: (sizes.ear - 14) / 2,
+                borderBottomLeftRadius: (sizes.ear - 14) / 3,
+                borderBottomRightRadius: (sizes.ear - 14) / 3,
                 backgroundColor: colors.inner,
               },
             ]}
@@ -153,20 +229,26 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
             styles.earRight,
             {
               width: sizes.ear,
-              height: sizes.ear,
-              borderRadius: sizes.ear / 2,
-              backgroundColor: colors.body,
-              transform: [{ rotate: earRotate }],
+              height: sizes.ear * 1.2,
+              borderTopLeftRadius: sizes.ear / 2,
+              borderTopRightRadius: sizes.ear / 2,
+              borderBottomLeftRadius: sizes.ear / 3,
+              borderBottomRightRadius: sizes.ear / 3,
+              backgroundColor: colors.dark,
+              transform: [{ rotate: earRotate }, { rotate: "15deg" }],
             },
           ]}
         >
           <View
             style={[
-              styles.earInner,
+              styles.earInnerRealistic,
               {
-                width: sizes.ear - 12,
-                height: sizes.ear - 12,
-                borderRadius: (sizes.ear - 12) / 2,
+                width: sizes.ear - 14,
+                height: (sizes.ear - 14) * 1.1,
+                borderTopLeftRadius: (sizes.ear - 14) / 2,
+                borderTopRightRadius: (sizes.ear - 14) / 2,
+                borderBottomLeftRadius: (sizes.ear - 14) / 3,
+                borderBottomRightRadius: (sizes.ear - 14) / 3,
                 backgroundColor: colors.inner,
               },
             ]}
@@ -178,22 +260,61 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
             styles.face,
             {
               width: sizes.face,
-              height: sizes.face * 0.9,
+              height: sizes.face * 0.85,
               borderRadius: sizes.face / 2,
+              backgroundColor: colors.belly,
             },
           ]}
         >
-          <View style={styles.eyeRow}>
-            <View style={styles.eyeContainer}>
-              <Text style={[styles.eyeText, stage === "adult" && styles.eyeTextLarge]}>{face.eyes}</Text>
+          <View style={styles.eyePatchRow}>
+            <View
+              style={[
+                styles.eyePatch,
+                {
+                  width: sizes.eyePatchW,
+                  height: sizes.eyePatchH,
+                  borderRadius: sizes.eyePatchW / 2,
+                  backgroundColor: colors.patch,
+                },
+              ]}
+            >
+              <Text style={[styles.eyeText, stage === "adult" && styles.eyeTextLarge]}>
+                {face.eyes}
+              </Text>
             </View>
-            <View style={styles.eyeContainer}>
-              <Text style={[styles.eyeText, stage === "adult" && styles.eyeTextLarge]}>{face.eyes}</Text>
+            <View
+              style={[
+                styles.eyePatch,
+                {
+                  width: sizes.eyePatchW,
+                  height: sizes.eyePatchH,
+                  borderRadius: sizes.eyePatchW / 2,
+                  backgroundColor: colors.patch,
+                },
+              ]}
+            >
+              <Text style={[styles.eyeText, stage === "adult" && styles.eyeTextLarge]}>
+                {face.eyes}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.nose} />
-          <Text style={styles.mouth}>{face.mouth}</Text>
+          <View
+            style={[
+              styles.snout,
+              {
+                width: sizes.snout,
+                height: sizes.snout * 0.7,
+                borderRadius: sizes.snout / 2,
+                backgroundColor: colors.belly,
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.05)",
+              },
+            ]}
+          >
+            <View style={[styles.noseRealistic, { backgroundColor: colors.nose }]} />
+            <Text style={styles.mouth}>{face.mouth}</Text>
+          </View>
 
           {face.cheeks && (
             <View style={styles.cheekRow}>
@@ -201,25 +322,39 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
               <View style={[styles.cheek, { backgroundColor: colors.inner }]} />
             </View>
           )}
+
+          {isLaughing && (
+            <View style={styles.laughLines}>
+              <Text style={styles.laughEmoji}>😆</Text>
+            </View>
+          )}
         </View>
 
-        <View style={[styles.stripe1, { backgroundColor: colors.dark }]} />
-        <View style={[styles.stripe2, { backgroundColor: colors.dark }]} />
+        <View style={[styles.bellyPatch, {
+          backgroundColor: colors.belly,
+          width: sizes.body * 0.55,
+          height: sizes.body * 0.35,
+          borderRadius: sizes.body * 0.28,
+          bottom: -sizes.body * 0.05,
+        }]} />
 
-        {stage === "adult" && (
-          <>
-            <View style={[styles.stripe3, { backgroundColor: colors.dark }]} />
-            <View style={[styles.stripe4, { backgroundColor: colors.dark }]} />
-          </>
-        )}
+        <View style={[styles.pawLeft, { backgroundColor: colors.dark }]} />
+        <View style={[styles.pawRight, { backgroundColor: colors.dark }]} />
       </View>
 
       <View style={styles.tailContainer}>
-        <View style={[styles.tail, { backgroundColor: colors.body }]}>
-          <View style={[styles.tailStripe, { backgroundColor: colors.dark }]} />
-          <View style={[styles.tailStripe2, { backgroundColor: colors.dark }]} />
+        <View style={[styles.tailRealistic, { backgroundColor: colors.body }]}>
+          <View style={[styles.tailRing1, { backgroundColor: colors.dark }]} />
+          <View style={[styles.tailRing2, { backgroundColor: colors.dark }]} />
+          <View style={[styles.tailTip, { backgroundColor: colors.dark }]} />
         </View>
       </View>
+
+      <AccessoryOverlay
+        activeAccessories={activeAccessories}
+        stage={stage}
+        bodySize={sizes.body}
+      />
 
       <Animated.View
         pointerEvents="none"
@@ -231,7 +366,7 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
             borderRadius: (sizes.body + 20) / 2,
             opacity: sadnessOverlay.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 0.3],
+              outputRange: [0, 0.25],
             }),
           },
         ]}
@@ -242,6 +377,25 @@ export default React.memo(function PetSprite({ mood, level, testID }: PetSpriteP
           <Text style={styles.sadEmoji}>💧</Text>
         </View>
       )}
+
+      {showHearts && heartAnims.map((anim, i) => (
+        <Animated.View
+          key={`heart-${i}`}
+          pointerEvents="none"
+          style={[
+            styles.heartFloat,
+            {
+              left: sizes.container * 0.3 + i * 30,
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }),
+              transform: [{
+                translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -80] }),
+              }],
+            },
+          ]}
+        >
+          <Text style={styles.heartEmoji}>❤️</Text>
+        </Animated.View>
+      ))}
 
       <View style={[styles.levelBadge, { backgroundColor: colors.badge }]}>
         <Text style={styles.levelText}>Lv.{level}</Text>
@@ -260,136 +414,183 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative" as const,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+    overflow: "visible",
+  },
+  furTexture1: {
+    position: "absolute" as const,
+    top: 12,
+    left: 8,
+    width: 30,
+    height: 4,
+    borderRadius: 2,
+    transform: [{ rotate: "-25deg" }],
+  },
+  furTexture2: {
+    position: "absolute" as const,
+    top: 12,
+    right: 8,
+    width: 30,
+    height: 4,
+    borderRadius: 2,
+    transform: [{ rotate: "25deg" }],
+  },
+  furTexture3: {
+    position: "absolute" as const,
+    top: 20,
+    left: 20,
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    transform: [{ rotate: "-10deg" }],
   },
   earLeft: {
     position: "absolute" as const,
-    top: -12,
-    left: 15,
+    top: -18,
+    left: 10,
     zIndex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   earRight: {
     position: "absolute" as const,
-    top: -12,
-    right: 15,
+    top: -18,
+    right: 10,
     zIndex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  earInner: {
+  earInnerRealistic: {
     position: "absolute" as const,
-    top: 6,
-    left: 6,
+    top: 8,
   },
   face: {
-    backgroundColor: "#FFF3E0",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
+    paddingTop: 4,
   },
-  eyeRow: {
+  eyePatchRow: {
     flexDirection: "row" as const,
-    gap: 24,
-    marginBottom: 4,
-  },
-  eyeContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  eyeText: {
-    fontSize: 18,
-    color: "#37474F",
-  },
-  eyeTextLarge: {
-    fontSize: 22,
-  },
-  nose: {
-    width: 10,
-    height: 7,
-    borderRadius: 5,
-    backgroundColor: "#37474F",
+    gap: 18,
     marginBottom: 2,
   },
-  mouth: {
-    fontSize: 16,
-    color: "#37474F",
+  eyePatch: {
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  eyeText: {
+    fontSize: 14,
+    color: "#FFFFFF",
+  },
+  eyeTextLarge: {
+    fontSize: 18,
+  },
+  snout: {
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: -2,
+    paddingTop: 2,
+  },
+  noseRealistic: {
+    width: 12,
+    height: 8,
+    borderRadius: 6,
+    marginBottom: 1,
+  },
+  mouth: {
+    fontSize: 13,
+    color: "#37474F",
+    marginTop: -3,
   },
   cheekRow: {
     flexDirection: "row" as const,
-    gap: 50,
+    gap: 44,
     position: "absolute" as const,
-    bottom: 18,
+    bottom: 14,
   },
   cheek: {
     width: 16,
     height: 10,
     borderRadius: 8,
-    opacity: 0.7,
+    opacity: 0.6,
   },
-  stripe1: {
+  laughLines: {
     position: "absolute" as const,
-    top: 20,
-    left: 8,
-    width: 20,
-    height: 6,
-    borderRadius: 3,
-    transform: [{ rotate: "-20deg" }],
+    top: -10,
+    right: -10,
   },
-  stripe2: {
-    position: "absolute" as const,
-    top: 20,
-    right: 8,
-    width: 20,
-    height: 6,
-    borderRadius: 3,
-    transform: [{ rotate: "20deg" }],
+  laughEmoji: {
+    fontSize: 20,
   },
-  stripe3: {
+  bellyPatch: {
     position: "absolute" as const,
-    top: 38,
-    left: 4,
-    width: 16,
-    height: 5,
-    borderRadius: 3,
-    transform: [{ rotate: "-15deg" }],
+    zIndex: 0,
   },
-  stripe4: {
+  pawLeft: {
     position: "absolute" as const,
-    top: 38,
-    right: 4,
-    width: 16,
-    height: 5,
-    borderRadius: 3,
-    transform: [{ rotate: "15deg" }],
+    bottom: -6,
+    left: 20,
+    width: 22,
+    height: 14,
+    borderRadius: 11,
+    zIndex: 3,
+  },
+  pawRight: {
+    position: "absolute" as const,
+    bottom: -6,
+    right: 20,
+    width: 22,
+    height: 14,
+    borderRadius: 11,
+    zIndex: 3,
   },
   tailContainer: {
     position: "absolute" as const,
-    bottom: 25,
-    right: 10,
+    bottom: 30,
+    right: 5,
   },
-  tail: {
-    width: 50,
-    height: 20,
-    borderRadius: 10,
-    transform: [{ rotate: "25deg" }],
+  tailRealistic: {
+    width: 55,
+    height: 22,
+    borderRadius: 11,
+    transform: [{ rotate: "20deg" }],
+    overflow: "hidden",
   },
-  tailStripe: {
+  tailRing1: {
     position: "absolute" as const,
-    top: 4,
-    left: 10,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: 2,
+    left: 8,
+    width: 8,
+    height: 18,
+    borderRadius: 4,
+    opacity: 0.7,
   },
-  tailStripe2: {
+  tailRing2: {
     position: "absolute" as const,
-    top: 4,
-    right: 10,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: 2,
+    left: 22,
+    width: 8,
+    height: 18,
+    borderRadius: 4,
+    opacity: 0.5,
+  },
+  tailTip: {
+    position: "absolute" as const,
+    top: 3,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    opacity: 0.8,
   },
   sadnessOverlay: {
     position: "absolute" as const,
@@ -402,6 +603,13 @@ const styles = StyleSheet.create({
   },
   sadEmoji: {
     fontSize: 22,
+  },
+  heartFloat: {
+    position: "absolute" as const,
+    top: 10,
+  },
+  heartEmoji: {
+    fontSize: 20,
   },
   levelBadge: {
     position: "absolute" as const,

@@ -1,6 +1,6 @@
 import { Achievement, ShopItem, DailyQuest } from "@/types/pet";
 
-export const DECAY_RATE_PER_MINUTE = 0.15;
+export const DECAY_RATE_PER_MINUTE = 0.225;
 export const MAX_STAT = 100;
 export const MIN_STAT = 0;
 
@@ -19,6 +19,27 @@ export const MINI_GAME_DURATION = 15000;
 export const MINI_GAME_SPAWN_INTERVAL = 900;
 export const MINI_GAME_COIN_PER_SCORE = 2;
 export const MINI_GAME_XP_PER_SCORE = 3;
+
+export const WASH_CLEANLINESS_RESTORE = 25;
+export const WASH_XP = 8;
+export const WASH_COINS = 3;
+
+export const PET_HAPPINESS_RESTORE = 10;
+export const PET_XP = 5;
+export const PET_COINS = 2;
+
+export const TICKLE_HAPPINESS_RESTORE = 15;
+export const TICKLE_XP = 10;
+export const TICKLE_COINS = 4;
+
+export const MEMORY_GAME_PAIRS = 8;
+export const MEMORY_GAME_COIN_PER_PAIR = 3;
+export const MEMORY_GAME_XP_PER_PAIR = 4;
+export const MEMORY_GAME_TIME_BONUS_THRESHOLD = 60;
+export const MEMORY_GAME_TIME_BONUS_COINS = 15;
+export const MEMORY_GAME_TIME_BONUS_XP = 20;
+
+export const ACCESSORY_ITEMS = ["bow_tie", "crown", "scarf"] as const;
 
 export function xpForLevel(level: number): number {
   return Math.floor(BASE_XP_PER_LEVEL * Math.pow(XP_GROWTH_FACTOR, level - 1));
@@ -371,5 +392,40 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Play 20 mini-games",
     emoji: "🕹️",
     condition: (s) => s.totalMiniGamesPlayed >= 20,
+  },
+  {
+    id: "first_wash",
+    name: "Squeaky Clean",
+    description: "Wash your pet for the first time",
+    emoji: "🧽",
+    condition: (s) => s.totalWashes >= 1,
+  },
+  {
+    id: "wash_10",
+    name: "Bath Master",
+    description: "Wash your pet 10 times",
+    emoji: "🛁",
+    condition: (s) => s.totalWashes >= 10,
+  },
+  {
+    id: "first_pet",
+    name: "Gentle Touch",
+    description: "Pet Kiki for the first time",
+    emoji: "🤗",
+    condition: (s) => s.totalPets >= 1,
+  },
+  {
+    id: "pet_20",
+    name: "Cuddle Expert",
+    description: "Pet Kiki 20 times",
+    emoji: "💞",
+    condition: (s) => s.totalPets >= 20,
+  },
+  {
+    id: "memory_master",
+    name: "Memory Master",
+    description: "Score 8 pairs in Memory Match",
+    emoji: "🧠",
+    condition: (s) => s.memoryGameHighScore >= 8,
   },
 ];

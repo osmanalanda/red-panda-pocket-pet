@@ -16,6 +16,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="mini-game" options={{ headerShown: false, presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+      <Stack.Screen name="kikis-room" options={{ headerShown: false, presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
     </Stack>
   );
 }

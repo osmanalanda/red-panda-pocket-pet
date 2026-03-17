@@ -15,6 +15,15 @@ import {
   PLAY_HAPPINESS_RESTORE,
   MINI_GAME_COIN_PER_SCORE,
   MINI_GAME_XP_PER_SCORE,
+  WASH_CLEANLINESS_RESTORE,
+  WASH_XP,
+  WASH_COINS,
+  PET_HAPPINESS_RESTORE,
+  PET_XP,
+  PET_COINS,
+  TICKLE_HAPPINESS_RESTORE,
+  TICKLE_XP,
+  TICKLE_COINS,
   xpForLevel,
   ACHIEVEMENTS,
   getTodaysDailyQuests,
@@ -33,15 +42,20 @@ const DEFAULT_STATE: PetState = {
   name: "Kiki",
   hunger: 80,
   happiness: 80,
+  cleanliness: 80,
   xp: 0,
   level: 1,
   coins: 55,
   totalFeeds: 0,
   totalPlays: 0,
+  totalWashes: 0,
+  totalPets: 0,
   totalCoinsEarned: 55,
   totalMiniGamesPlayed: 0,
+  memoryGameHighScore: 0,
   lastUpdateTime: Date.now(),
   inventory: [],
+  activeAccessories: [],
   achievements: [],
   dailyQuests: [],
   dailyQuestsLastReset: 0,
@@ -58,6 +72,7 @@ function applyDecay(state: PetState): PetState {
     ...state,
     hunger: Math.max(MIN_STAT, state.hunger - decay),
     happiness: Math.max(MIN_STAT, state.happiness - decay * 0.8),
+    cleanliness: Math.max(MIN_STAT, state.cleanliness - decay * 0.6),
     lastUpdateTime: now,
   };
 }
@@ -119,6 +134,7 @@ export const [PetProvider, usePet] = createContextHook(() => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLevelUp, setShowLevelUp] = useState<boolean>(false);
   const [newAchievementName, setNewAchievementName] = useState<string | null>(null);
+  const [isLaughing, setIsLaughing] = useState<boolean>(false);
   const decayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadQuery = useQuery({
@@ -130,6 +146,11 @@ export const [PetProvider, usePet] = createContextHook(() => {
         const migrated: PetState = {
           ...DEFAULT_STATE,
           ...parsed,
+          cleanliness: parsed.cleanliness ?? 80,
+          totalWashes: parsed.totalWashes ?? 0,
+          totalPets: parsed.totalPets ?? 0,
+          memoryGameHighScore: parsed.memoryGameHighScore ?? 0,
+          activeAccessories: parsed.activeAccessories ?? [],
           totalMiniGamesPlayed: parsed.totalMiniGamesPlayed ?? 0,
           dailyQuests: parsed.dailyQuests ?? [],
           dailyQuestsLastReset: parsed.dailyQuestsLastReset ?? 0,
@@ -177,6 +198,9 @@ export const [PetProvider, usePet] = createContextHook(() => {
         }
         if (decayed.happiness < 15 && prev.happiness >= 15) {
           setToastMessage("Kiki feels lonely... 🥺");
+        }
+        if (decayed.cleanliness < 15 && prev.cleanliness >= 15) {
+          setToastMessage("Kiki needs a bath! 🛁");
         }
         return decayed;
       });
@@ -261,6 +285,75 @@ export const [PetProvider, usePet] = createContextHook(() => {
     });
   }, [addXpAndCheckLevel, processAchievements]);
 
+  const wash = useCallback(() => {
+    setPetState((prev) => {
+      if (prev.cleanliness >= MAX_STAT) {
+        setToastMessage("Kiki is already sparkling clean! ✨");
+        return prev;
+      }
+      let next: PetState = {
+        ...prev,
+        cleanliness: Math.min(MAX_STAT, prev.cleanliness + WASH_CLEANLINESS_RESTORE),
+        coins: prev.coins + WASH_COINS,
+        totalWashes: prev.totalWashes + 1,
+        totalCoinsEarned: prev.totalCoinsEarned + WASH_COINS,
+        lastUpdateTime: Date.now(),
+      };
+      next = addXpAndCheckLevel(next, WASH_XP);
+      next = processAchievements(next);
+      return next;
+    });
+  }, [addXpAndCheckLevel, processAchievements]);
+
+  const petKiki = useCallback(() => {
+    setPetState((prev) => {
+      let next: PetState = {
+        ...prev,
+        happiness: Math.min(MAX_STAT, prev.happiness + PET_HAPPINESS_RESTORE),
+        coins: prev.coins + PET_COINS,
+        totalPets: prev.totalPets + 1,
+        totalCoinsEarned: prev.totalCoinsEarned + PET_COINS,
+        lastUpdateTime: Date.now(),
+      };
+      next = addXpAndCheckLevel(next, PET_XP);
+      next = processAchievements(next);
+      return next;
+    });
+  }, [addXpAndCheckLevel, processAchievements]);
+
+  const tickle = useCallback(() => {
+    setIsLaughing(true);
+    setTimeout(() => setIsLaughing(false), 2000);
+    setPetState((prev) => {
+      let next: PetState = {
+        ...prev,
+        happiness: Math.min(MAX_STAT, prev.happiness + TICKLE_HAPPINESS_RESTORE),
+        coins: prev.coins + TICKLE_COINS,
+        totalCoinsEarned: prev.totalCoinsEarned + TICKLE_COINS,
+        lastUpdateTime: Date.now(),
+      };
+      next = addXpAndCheckLevel(next, TICKLE_XP);
+      next = processAchievements(next);
+      return next;
+    });
+  }, [addXpAndCheckLevel, processAchievements]);
+
+  const toggleAccessory = useCallback((accessoryId: string) => {
+    setPetState((prev) => {
+      const isActive = prev.activeAccessories.includes(accessoryId);
+      const hasItem = prev.inventory.some((i) => i.id === accessoryId);
+      if (!hasItem && !isActive) {
+        setToastMessage("You don't own this accessory! 🛒");
+        return prev;
+      }
+      const newActive = isActive
+        ? prev.activeAccessories.filter((id) => id !== accessoryId)
+        : [...prev.activeAccessories, accessoryId];
+      setToastMessage(isActive ? "Accessory removed!" : "Accessory equipped! ✨");
+      return { ...prev, activeAccessories: newActive };
+    });
+  }, []);
+
   const useItem = useCallback((item: ShopItem) => {
     setPetState((prev) => {
       const invItem = prev.inventory.find((i) => i.id === item.id);
@@ -268,6 +361,17 @@ export const [PetProvider, usePet] = createContextHook(() => {
         setToastMessage("You don't have this item! 🛒");
         return prev;
       }
+
+      const isAccessory = item.category === "accessory";
+      if (isAccessory) {
+        const isActive = prev.activeAccessories.includes(item.id);
+        const newActive = isActive
+          ? prev.activeAccessories.filter((id) => id !== item.id)
+          : [...prev.activeAccessories, item.id];
+        setToastMessage(isActive ? `Removed ${item.emoji} ${item.name}` : `Equipped ${item.emoji} ${item.name}!`);
+        return { ...prev, activeAccessories: newActive };
+      }
+
       let next: PetState = {
         ...prev,
         hunger: Math.min(MAX_STAT, prev.hunger + item.hungerRestore),
@@ -327,6 +431,27 @@ export const [PetProvider, usePet] = createContextHook(() => {
     });
   }, [addXpAndCheckLevel, processAchievements]);
 
+  const claimMemoryGameReward = useCallback((pairs: number, timeBonus: boolean) => {
+    setPetState((prev) => {
+      const coinsEarned = pairs * 3 + (timeBonus ? 15 : 0);
+      const xpEarned = pairs * 4 + (timeBonus ? 20 : 0);
+
+      let next: PetState = {
+        ...prev,
+        coins: prev.coins + coinsEarned,
+        happiness: Math.min(MAX_STAT, prev.happiness + Math.min(pairs * 3, 30)),
+        totalCoinsEarned: prev.totalCoinsEarned + coinsEarned,
+        totalMiniGamesPlayed: prev.totalMiniGamesPlayed + 1,
+        memoryGameHighScore: Math.max(prev.memoryGameHighScore, pairs),
+        lastUpdateTime: Date.now(),
+        dailyQuests: advanceQuestProgress(prev.dailyQuests, "mini_game"),
+      };
+      next = addXpAndCheckLevel(next, xpEarned);
+      next = processAchievements(next);
+      return next;
+    });
+  }, [addXpAndCheckLevel, processAchievements]);
+
   const claimDailyQuest = useCallback((questId: string) => {
     setPetState((prev) => {
       const qp = prev.dailyQuests.find((q) => q.questId === questId);
@@ -369,10 +494,10 @@ export const [PetProvider, usePet] = createContextHook(() => {
 
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
-  const mood = useMemo<PetMood>(
-    () => getMood(petState.hunger, petState.happiness),
-    [petState.hunger, petState.happiness]
-  );
+  const mood = useMemo<PetMood>(() => {
+    if (isLaughing) return "laughing";
+    return getMood(petState.hunger, petState.happiness);
+  }, [petState.hunger, petState.happiness, isLaughing]);
 
   const xpProgress = useMemo(() => {
     const needed = xpForLevel(petState.level);
@@ -388,14 +513,20 @@ export const [PetProvider, usePet] = createContextHook(() => {
       xpProgress,
       xpNeeded,
       isReady,
+      isLaughing,
       toastMessage,
       showLevelUp,
       newAchievementName,
       feed,
       play,
+      wash,
+      petKiki,
+      tickle,
+      toggleAccessory,
       useItem,
       buyItem,
       claimMiniGameReward,
+      claimMemoryGameReward,
       claimDailyQuest,
       dismissToast,
     }),
@@ -405,14 +536,20 @@ export const [PetProvider, usePet] = createContextHook(() => {
       xpProgress,
       xpNeeded,
       isReady,
+      isLaughing,
       toastMessage,
       showLevelUp,
       newAchievementName,
       feed,
       play,
+      wash,
+      petKiki,
+      tickle,
+      toggleAccessory,
       useItem,
       buyItem,
       claimMiniGameReward,
+      claimMemoryGameReward,
       claimDailyQuest,
       dismissToast,
     ]
