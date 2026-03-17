@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "PandaPal",
+      "path": "expo",
+      "framework": "react-native"
+    }
+  ]
+}
